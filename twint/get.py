@@ -1,5 +1,4 @@
 from async_timeout import timeout
-from datetime import datetime
 from bs4 import BeautifulSoup
 import sys
 import socket
@@ -16,7 +15,8 @@ from . import url
 from .output import Tweets, Users
 from .token import TokenExpiryException
 
-import logging as logme
+import logging
+logger = logging.getLogger(__name__)
 
 httpproxy = None
 
@@ -66,7 +66,7 @@ def dict_to_url(dct):
 
 
 def get_connector(config):
-    logme.debug(__name__ + ':get_connector')
+    logger.debug(':get_connector')
     _connector = None
     if config.Proxy_host:
         if config.Proxy_host.lower() == "tor":
@@ -84,7 +84,7 @@ def get_connector(config):
                 httpproxy = "http://" + config.Proxy_host + ":" + str(config.Proxy_port)
                 return _connector
             else:
-                logme.critical("get_connector:proxy-type-error")
+                logger.critical("get_connector:proxy-type-error")
                 print("Error: Proxy types allowed are: http, socks5 and socks4. No https.")
                 sys.exit(1)
             _connector = ProxyConnector(
@@ -93,12 +93,12 @@ def get_connector(config):
                 port=config.Proxy_port,
                 rdns=True)
         else:
-            logme.critical(__name__ + ':get_connector:proxy-port-type-error')
+            logger.critical(':get_connector:proxy-port-type-error')
             print("Error: Please specify --proxy-host, --proxy-port, and --proxy-type")
             sys.exit(1)
     else:
         if config.Proxy_port or config.Proxy_type:
-            logme.critical(__name__ + ':get_connector:proxy-host-arg-error')
+            logger.critical(':get_connector:proxy-host-arg-error')
             print("Error: Please specify --proxy-host, --proxy-port, and --proxy-type")
             sys.exit(1)
 
@@ -106,7 +106,7 @@ def get_connector(config):
 
 
 async def RequestUrl(config, init):
-    logme.debug(__name__ + ':RequestUrl')
+    logger.debug(':RequestUrl')
     _connector = get_connector(config)
     _serialQuery = ""
     params = []
@@ -115,20 +115,20 @@ async def RequestUrl(config, init):
 
     # TODO : do this later
     if config.Profile:
-        logme.debug(__name__ + ':RequestUrl:Profile')
+        logger.debug(':RequestUrl:Profile')
         _url, params, _serialQuery = url.SearchProfile(config, init)
     elif config.TwitterSearch:
-        logme.debug(__name__ + ':RequestUrl:TwitterSearch')
+        logger.debug(':RequestUrl:TwitterSearch')
         _url, params, _serialQuery = await url.Search(config, init)
     else:
         if config.Following:
-            logme.debug(__name__ + ':RequestUrl:Following')
+            logger.debug(':RequestUrl:Following')
             _url = await url.Following(config.Username, init)
         elif config.Followers:
-            logme.debug(__name__ + ':RequestUrl:Followers')
+            logger.debug(':RequestUrl:Followers')
             _url = await url.Followers(config.Username, init)
         else:
-            logme.debug(__name__ + ':RequestUrl:Favorites')
+            logger.debug(':RequestUrl:Favorites')
             _url = await url.Favorites(config.Username, init)
         _serialQuery = _url
 
@@ -141,28 +141,28 @@ async def RequestUrl(config, init):
 
 
 def ForceNewTorIdentity(config):
-    logme.debug(__name__ + ':ForceNewTorIdentity')
+    logger.debug(':ForceNewTorIdentity')
     try:
         tor_c = socket.create_connection(('127.0.0.1', config.Tor_control_port))
         tor_c.send('AUTHENTICATE "{}"\r\nSIGNAL NEWNYM\r\n'.format(config.Tor_control_password).encode())
         response = tor_c.recv(1024)
         if response != b'250 OK\r\n250 OK\r\n':
             sys.stderr.write('Unexpected response from Tor control port: {}\n'.format(response))
-            logme.critical(__name__ + ':ForceNewTorIdentity:unexpectedResponse')
+            logger.critical(':ForceNewTorIdentity:unexpectedResponse')
     except Exception as e:
-        logme.debug(__name__ + ':ForceNewTorIdentity:errorConnectingTor')
+        logger.debug(':ForceNewTorIdentity:errorConnectingTor')
         sys.stderr.write('Error connecting to Tor control port: {}\n'.format(repr(e)))
         sys.stderr.write('If you want to rotate Tor ports automatically - enable Tor control port\n')
 
 
 async def Request(_url, connector=None, params=None, headers=None):
-    logme.debug(__name__ + ':Request:Connector')
+    logger.debug(':Request:Connector')
     async with aiohttp.ClientSession(connector=connector, headers=headers) as session:
         return await Response(session, _url, params)
 
 
 async def Response(session, _url, params=None):
-    logme.debug(__name__ + ':Response')
+    logger.debug(':Response')
     with timeout(120):
         async with session.get(_url, ssl=True, params=params, proxy=httpproxy) as response:
             resp = await response.text()
@@ -172,7 +172,7 @@ async def Response(session, _url, params=None):
 
 
 async def RandomUserAgent(wa=None):
-    logme.debug(__name__ + ':RandomUserAgent')
+    logger.debug(':RandomUserAgent')
     try:
         if wa:
             return "Mozilla/5.0 (Windows NT 6.4; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/41.0.2225.0 Safari/537.36"
@@ -182,7 +182,7 @@ async def RandomUserAgent(wa=None):
 
 
 async def Username(_id, bearer_token, guest_token):
-    logme.debug(__name__ + ':Username')
+    logger.debug(':Username')
     _dct = {'userId': _id, 'withHighlightedLabel': False}
     _url = "https://api.twitter.com/graphql/B9FuNQVmyx32rdbIPEZKag/UserByRestId?variables={}".format(dict_to_url(_dct))
     _headers = {
@@ -196,18 +196,18 @@ async def Username(_id, bearer_token, guest_token):
 
 
 async def Tweet(url, config, conn):
-    logme.debug(__name__ + ':Tweet')
+    logger.debug(':Tweet')
     try:
         response = await Request(url)
         soup = BeautifulSoup(response, "html.parser")
         tweets = soup.find_all("div", "tweet")
         await Tweets(tweets, config, conn, url)
     except Exception as e:
-        logme.critical(__name__ + ':Tweet:' + str(e))
+        logger.critical(f':Tweet:{e}')
 
 
 async def User(username, config, conn, user_id=False):
-    logme.debug(__name__ + ':User')
+    logger.debug(':User')
     _dct = {'screen_name': username, 'withHighlightedLabel': False}
     _url = 'https://api.twitter.com/graphql/jMaTS-_Ea8vh9rpKggJbCQ/UserByScreenName?variables={}'\
         .format(dict_to_url(_dct))
@@ -223,22 +223,22 @@ async def User(username, config, conn, user_id=False):
                 _id = j_r['data']['user']['rest_id']
                 return _id
             except KeyError as e:
-                logme.critical(__name__ + ':User:' + str(e))
+                logger.critical(f':User:{e}')
                 return
         await Users(j_r, config, conn)
     except Exception as e:
-        logme.critical(__name__ + ':User:' + str(e))
+        logger.critical(f':User:{e}')
         raise
 
 
 def Limit(Limit, count):
-    logme.debug(__name__ + ':Limit')
+    logger.debug(':Limit')
     if Limit is not None and count >= int(Limit):
         return True
 
 
 async def Multi(feed, config, conn):
-    logme.debug(__name__ + ':Multi')
+    logger.debug(':Multi')
     count = 0
     try:
         with concurrent.futures.ThreadPoolExecutor(max_workers=20) as executor:
@@ -247,34 +247,34 @@ async def Multi(feed, config, conn):
             for tweet in feed:
                 count += 1
                 if config.Favorites or config.Profile_full:
-                    logme.debug(__name__ + ':Multi:Favorites-profileFull')
+                    logger.debug(':Multi:Favorites-profileFull')
                     link = tweet.find("a")["href"]
                     url = f"https://twitter.com{link}&lang=en"
                 elif config.User_full:
-                    logme.debug(__name__ + ':Multi:userFull')
+                    logger.debug(':Multi:userFull')
                     username = tweet.find("a")["name"]
                     url = f"http://twitter.com/{username}?lang=en"
                 else:
-                    logme.debug(__name__ + ':Multi:else-url')
+                    logger.debug(':Multi:else-url')
                     link = tweet.find("a", "tweet-timestamp js-permalink js-nav js-tooltip")["href"]
                     url = f"https://twitter.com{link}?lang=en"
 
                 if config.User_full:
-                    logme.debug(__name__ + ':Multi:user-full-Run')
+                    logger.debug(':Multi:user-full-Run')
                     futures.append(loop.run_in_executor(executor, await User(url,
                                                                              config, conn)))
                 else:
-                    logme.debug(__name__ + ':Multi:notUser-full-Run')
+                    logger.debug(':Multi:notUser-full-Run')
                     futures.append(loop.run_in_executor(executor, await Tweet(url,
                                                                               config, conn)))
-            logme.debug(__name__ + ':Multi:asyncioGather')
+            logger.debug(':Multi:asyncioGather')
             await asyncio.gather(*futures)
     except Exception as e:
         # TODO: fix error not error
         # print(str(e) + " [x] get.Multi")
         # will return "'NoneType' object is not callable"
         # but still works
-        # logme.critical(__name__+':Multi:' + str(e))
+        # logger.critical(f':Multi:{e}')
         pass
 
     return count

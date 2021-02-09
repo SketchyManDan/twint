@@ -1,8 +1,10 @@
 import datetime
 from sys import platform
-import logging as logme
 from urllib.parse import urlencode
 from urllib.parse import quote
+
+import logging
+logger = logging.getLogger(__name__)
 
 mobile = "https://mobile.twitter.com"
 base = "https://api.twitter.com/2/search/adaptive.json"
@@ -25,7 +27,7 @@ def _formatDate(date):
 
 
 async def Favorites(username, init):
-    logme.debug(__name__ + ':Favorites')
+    logger.debug(':Favorites')
     url = f"{mobile}/{username}/favorites?lang=en"
 
     if init != '-1':
@@ -35,7 +37,7 @@ async def Favorites(username, init):
 
 
 async def Followers(username, init):
-    logme.debug(__name__ + ':Followers')
+    logger.debug(':Followers')
     url = f"{mobile}/{username}/followers?lang=en"
 
     if init != '-1':
@@ -45,7 +47,7 @@ async def Followers(username, init):
 
 
 async def Following(username, init):
-    logme.debug(__name__ + ':Following')
+    logger.debug(':Following')
     url = f"{mobile}/{username}/following?lang=en"
 
     if init != '-1':
@@ -55,7 +57,7 @@ async def Following(username, init):
 
 
 async def MobileProfile(username, init):
-    logme.debug(__name__ + ':MobileProfile')
+    logger.debug(':MobileProfile')
     url = f"{mobile}/{username}?lang=en"
 
     if init != '-1':
@@ -65,7 +67,7 @@ async def MobileProfile(username, init):
 
 
 async def Search(config, init):
-    logme.debug(__name__ + ':Search')
+    logger.debug(':Search')
     url = base
     tweet_count = 100
     q = ""
@@ -167,7 +169,7 @@ async def Search(config, init):
 
 
 def SearchProfile(config, init=None):
-    logme.debug(__name__ + ':SearchProfile')
+    logger.debug(':SearchProfile')
     _url = 'https://api.twitter.com/2/timeline/profile/{user_id}.json'.format(user_id=config.User_id)
     tweet_count = 100
     params = [

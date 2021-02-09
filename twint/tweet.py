@@ -1,9 +1,12 @@
 from time import strftime, localtime
 from datetime import datetime, timezone
 
-import logging as logme
 from googletransx import Translator
-# ref. 
+
+import logging
+logger = logging.getLogger(__name__)
+
+# ref.
 # - https://github.com/x0rzkov/py-googletrans#basic-usage
 translator = Translator()
 
@@ -31,7 +34,7 @@ Tweet_formats = {
 def _get_mentions(tw):
     """Extract mentions from tweet
     """
-    logme.debug(__name__ + ':get_mentions')
+    logger.debug(':get_mentions')
     try:
         mentions = [
             {
@@ -64,7 +67,7 @@ def _get_reply_to(tw):
 def getText(tw):
     """Replace some text
     """
-    logme.debug(__name__ + ':getText')
+    logger.debug(':getText')
     text = tw['full_text']
     text = text.replace("http", " http")
     text = text.replace("pic.twitter", " pic.twitter")
@@ -76,7 +79,7 @@ def getText(tw):
 def Tweet(tw, config):
     """Create Tweet object
     """
-    logme.debug(__name__ + ':Tweet')
+    logger.debug(':Tweet')
     t = tweet()
     t.id = int(tw['id_str'])
     t.id_str = tw["id_str"]
@@ -161,6 +164,6 @@ def Tweet(tw, config):
             t.trans_dest = ts.dest
         # ref. https://github.com/SuniTheFish/ChainTranslator/blob/master/ChainTranslator/__main__.py#L31
         except ValueError as e:
-            logme.debug(__name__ + ':Tweet:translator.translate:' + str(e))
+            logger.debug(__name__ + ':Tweet:translator.translate:' + str(e))
             raise Exception("Invalid destination language: {} / Tweet: {}".format(config.TranslateDest, t.tweet))
     return t

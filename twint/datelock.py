@@ -1,8 +1,9 @@
 import datetime
 
-import logging as logme
-
 from .tweet import utc_to_local
+
+import logging
+logger = logging.getLogger(__name__)
 
 
 class Datelock:
@@ -23,7 +24,7 @@ def convertToDateTime(string):
 
 
 def Set(Until, Since):
-    logme.debug(__name__+':Set')
+    logger.debug(':Set')
     d = Datelock()
 
     if Until:
